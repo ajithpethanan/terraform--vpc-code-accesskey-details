@@ -1,0 +1,170 @@
+(terrafrom installation)
+https://developer.hashicorp.com/terraform/downloads
+
+github link:
+
+https://github.com/intellipaat2/website.git
+-------------------------------------------------------
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+    }
+  }
+}
+
+provider "aws" {
+  region  = "ap-south-1"
+  access_key = "AKIA2PQHCCMHLHDDN3L5"
+  secret_key = "U9M6IuOYxKytXnUUj33x/QwPbGNpgS6LyW/HpMI+"
+}
+
+
+resource "aws_instance" "example" {
+  ami = "ami-0f5ee92e2d63afc18"
+  count = 2
+  instance_type = "t2.medium"
+  key_name = "ubuntu"
+  tags = {
+    Name = "kub-slave"
+  }
+}
+resource "aws_instance" "main" {
+  ami = "ami-0f5ee92e2d63afc18"
+  count = 1
+  instance_type = "t2.medium"
+  key_name = "ubuntu"
+  tags = {
+     Name = "kub1-master"
+  }
+}
+-------------------------------------------------------------------------
+(Kubernetes cluster)
+(On master node and worker node both)
+
+(sudo nano install.sh)
+sudo apt update -y
+sudo apt install docker.io -y
+
+sudo systemctl start docker
+sudo systemctl enable docker
+
+sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt update -y
+sudo apt install kubeadm=1.20.0-00 kubectl=1.20.0-00 kubelet=1.20.0-00 -y
+----------------------------------------------------------------------------
+sudo bash install.sh
+-------------------------------------------------------------------------------
+
+
+(master node)
+sudo su
+kubeadm init     (this will generate the join token command which needs to be pasted on the worker nodes)
+
+
+
+(Master node)
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+-------------------------------------------------------------------------------------------------------
+(CNI)
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+
+
+
+
+kubectl get nodes 
+--------------------------------------------------------------
+(Jenkins installation)
+
+https://www.jenkins.io/doc/book/installing/linux/#debianubuntu
+
+--------------------------------------------------------------------------------------------------
+(script for jenkins)
+
+pipeline{
+    agent none
+    environment {
+        DOCKERHUB_CREDENTIALS=credentials('e814f99d-8cc0-425d-840e-0c10c489f570')
+    }
+    
+    stages{
+        stage('Hello'){
+            agent{ 
+                label 'Kub-master'
+            }
+            steps{
+                echo 'Hello World'
+            }
+        }
+        stage('git'){
+            agent{ 
+                label 'Kub-master'
+            }
+
+            steps{
+
+                git'https://github.com/intellipaat2/website.git'
+            }
+        }
+        stage('docker') {
+            agent { 
+                label 'Kub-master'
+            }
+
+            steps {
+
+                sh 'sudo docker build /home/ubuntu/jenkins/workspace/pipeline -t ritikdevoper123/demo1'
+                sh 'sudo echo $DOCKERHUB_CREDENTIALS_PSW | sudo docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                sh 'sudo docker push ritikdevoper123/demo1'
+
+            }
+        }
+        stage('Kuberneets') {
+            agent { 
+                label 'Kub-master'
+            }
+
+            steps {
+
+                sh 'sudo kubectl create -f deploy.yml'
+                sh 'sudo kubectl create -f svc.yml'
+            }
+        }        
+        
+    }
+}
+
+
+
+
+
+
+sudo nano install.sh (for docker and kubernetes):
+sudo apt update -y
+sudo apt install docker.io -y
+
+sudo systemctl start docker
+sudo systemctl enable docker
+
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+sudo apt install kubernetes
+
+
+
+
+
